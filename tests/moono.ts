@@ -27,7 +27,7 @@ describe("moono", () => {
     const existing = await provider.connection.getAccountInfo(protocolPda);
 
     if (!existing) {
-      await program.methods
+      const tx = await program.methods
         .initializeProtocol()
         .accounts({
           protocol: protocolPda,
@@ -35,32 +35,8 @@ describe("moono", () => {
           systemProgram: anchor.web3.SystemProgram.programId,
         })
         .rpc();
+      return [protocolPda, tx];
     }
-
-    return protocolPda;
-  }
-
-
-  it("ping", async () => {
-    const tx = await program.methods.ping().rpc();
-    console.log("tx:", tx);
-  });
-
-  it("initialize_protocol", async () => {
-    const [protocolPda] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("protocol")],
-      program.programId
-    );
-
-    const tx = await program.methods
-      .initializeProtocol()
-      .accounts({
-        protocol: protocolPda,
-        authority: provider.wallet.publicKey,
-        system_program: anchor.web3.SystemProgram.programId
-      })
-      .rpc();
-    console.log("tx:", tx);
 
     const protocolAccount = await program.account.protocolConfig.fetch(protocolPda);
 
@@ -73,22 +49,19 @@ describe("moono", () => {
     if (protocolAccount.paused !== false) {
       throw new Error("Paused should be false");
     }
+
+    return [protocolPda, null];
+  }
+
+
+  it("ping", async () => {
+    const tx = await program.methods.ping().rpc();
+    console.log("tx:", tx);
   });
 
   it("initialize_asset_pool", async () => {
-    const [protocolPda] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("protocol")],
-      program.programId
-    );
-
-    await program.methods
-      .initializeProtocol()
-      .accounts({
-        protocol: protocolPda,
-        authority: provider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .rpc();
+    const res = ensureProtocolInitialized();
+    const protocolPda = res[0];
 
     const mint = await createMint(
       provider.connection,
@@ -145,19 +118,8 @@ describe("moono", () => {
   });
 
   it("set_asset_pool_flags", async () => {
-    const [protocolPda] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("protocol")],
-      program.programId
-    );
-
-    await program.methods
-      .initializeProtocol()
-      .accounts({
-        protocol: protocolPda,
-        authority: provider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .rpc();
+    const res = ensureProtocolInitialized();
+    const protocolPda = res[0];
 
     const mint = await createMint(
       provider.connection,
@@ -210,19 +172,8 @@ describe("moono", () => {
   });
 
   it("initialize_tick_page", async () => {
-    const [protocolPda] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("protocol")],
-      program.programId
-    );
-
-    await program.methods
-      .initializeProtocol()
-      .accounts({
-        protocol: protocolPda,
-        authority: provider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .rpc();
+    const res = ensureProtocolInitialized();
+    const protocolPda = res[0];
 
     const mint = await createMint(
       provider.connection,
@@ -283,19 +234,8 @@ describe("moono", () => {
     const tick = 10;
     const amount = new anchor.BN(1000);
 
-    const [protocolPda] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("protocol")],
-      program.programId
-    );
-
-    await program.methods
-      .initializeProtocol()
-      .accounts({
-        protocol: protocolPda,
-        authority: provider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .rpc();
+    const res = ensureProtocolInitialized();
+    const protocolPda = res[0];
 
     const mint = await createMint(
       provider.connection,
