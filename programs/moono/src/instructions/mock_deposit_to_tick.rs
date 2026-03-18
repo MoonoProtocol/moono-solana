@@ -8,7 +8,7 @@ pub fn handle_mock_deposit_to_tick(
     tick: u32,
     amount: u64,
 ) -> Result<()> {
-    let tick_page = &mut ctx.accounts.tick_page;
+    let mut tick_page = ctx.accounts.tick_page.load_mut()?;
 
     let (_page, index) = tick_to_page_index(tick);
     let tick_state = &mut tick_page.ticks[index];
@@ -30,12 +30,12 @@ pub struct MockDepositToTick<'info> {
         seeds = [
             b"tick_page",
             asset_pool.key().as_ref(),
-            &tick_page.page_index.to_le_bytes()
+            &tick_page.load()?.page_index.to_le_bytes()
         ],
-        bump = tick_page.bump,
-        constraint = tick_page.asset_pool == asset_pool.key()
+        bump = tick_page.load()?.bump,
+        constraint = tick_page.load()?.asset_pool == asset_pool.key()
     )]
-    pub tick_page: Box<Account<'info, TickPage>>,
+    pub tick_page: AccountLoader<'info, TickPage>,
 
     pub asset_pool: Account<'info, AssetPool>,
 }

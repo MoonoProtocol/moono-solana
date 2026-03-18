@@ -9,7 +9,7 @@ pub fn handle_initialize_tick_page(
     page_index: u32,
 ) -> Result<()> {
     let protocol = &mut ctx.accounts.protocol;
-    let tick_page = &mut ctx.accounts.tick_page;
+    let tick_page = &mut ctx.accounts.tick_page.load_init()?;
 
     require!(
         protocol.authority == ctx.accounts.authority.key(),
@@ -52,9 +52,9 @@ pub struct InitializeTickPage<'info> {
             &page_index.to_le_bytes()
         ],
         bump,
-        space = 8 + TickPage::INIT_SPACE
+        space = TICK_PAGE_SIZE
     )]
-    pub tick_page: Box<Account<'info, TickPage>>,
+    pub tick_page: AccountLoader<'info, TickPage>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
