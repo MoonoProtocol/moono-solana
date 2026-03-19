@@ -15,10 +15,6 @@ declare_id!("moonoL26kRC8S49yPuuopKhbNhvgf2h4Dva91noD8rN");
 pub mod moono {
     use super::*;
 
-    pub fn ping(_ctx: Context<Ping>) -> Result<()> {
-        instructions::ping::handle_ping(_ctx)
-    }
-
     pub fn initialize_protocol(_ctx: Context<InitializeProtocol>) -> Result<()> {
         instructions::initialize_protocol::handle_initialize_protocol(_ctx)
     }
@@ -48,18 +44,6 @@ pub mod moono {
         instructions::initialize_tick_page::handle_initialize_tick_page(
             ctx,
             page_index
-        )
-    }
-
-    pub fn mock_deposit_to_tick(
-        ctx: Context<MockDepositToTick>,
-        tick: u32,
-        amount: u64,
-    ) -> Result<()> {
-        instructions::mock_deposit_to_tick::handle_mock_deposit_to_tick(
-            ctx,
-            tick,
-            amount
         )
     }
 

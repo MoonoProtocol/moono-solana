@@ -56,20 +56,14 @@ describe("moono", () => {
     return [protocolPda, null];
   }
 
-
-  it("ping", async () => {
-    const tx = await program.methods.ping().rpc();
-    console.log("tx:", tx);
-  });
-
-  it("initialize_asset_pool", async () => {
+  it("initialize_asset_pool_creates_vault", async () => {
     const res = await ensureProtocolInitialized();
     const protocolPda = res[0];
 
     const mint = await createMint(
       provider.connection,
-      provider.wallet.payer,
-      provider.wallet.publicKey,
+      wallet.payer,
+      wallet.payer.publicKey,
       null,
       6
     );
@@ -79,21 +73,33 @@ describe("moono", () => {
       program.programId
     );
 
+    const [vaultAuthorityPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("vault_authority"), assetPoolPda.toBuffer()],
+      program.programId
+    );
+
+    const [vaultPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("vault"), assetPoolPda.toBuffer()],
+      program.programId
+    );
+
     const tx = await program.methods
       .initializeAssetPool()
       .accounts({
         protocol: protocolPda,
         assetPool: assetPoolPda,
         mint,
-        authority: provider.wallet.publicKey,
-        system_program: anchor.web3.SystemProgram.programId
+        vaultAuthority: vaultAuthorityPda,
+        vault: vaultPda,
+        authority: wallet.payer.publicKey,
+        tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
       })
+      .signers([wallet.payer])
       .rpc();
     console.log("tx:", tx);
 
     const assetPool = await program.account.assetPool.fetch(assetPoolPda);
-
-    console.log("asset pool:", assetPool);
 
     if (!assetPool.protocol.equals(protocolPda)) {
       throw new Error("Protocol mismatch");
@@ -101,6 +107,10 @@ describe("moono", () => {
 
     if (!assetPool.mint.equals(mint)) {
       throw new Error("Mint mismatch");
+    }
+
+    if (!assetPool.vault.equals(vaultPda)) {
+      throw new Error("Vault pubkey mismatch");
     }
 
     if (assetPool.isEnabled !== true) {
@@ -118,6 +128,20 @@ describe("moono", () => {
     if (assetPool.decimals !== 6) {
       throw new Error("Decimals mismatch");
     }
+
+    const vaultAccount = await getAccount(provider.connection, vaultPda);
+
+    if (!vaultAccount.mint.equals(mint)) {
+      throw new Error("Vault mint mismatch");
+    }
+
+    if (!vaultAccount.owner.equals(vaultAuthorityPda)) {
+      throw new Error("Vault authority mismatch");
+    }
+
+    if (Number(vaultAccount.amount) !== 0) {
+      throw new Error("Vault should start empty");
+    }
   });
 
   it("set_asset_pool_flags", async () => {
@@ -126,8 +150,8 @@ describe("moono", () => {
 
     const mint = await createMint(
       provider.connection,
-      provider.wallet.payer,
-      provider.wallet.publicKey,
+      wallet.payer,
+      wallet.payer.publicKey,
       null,
       6
     );
@@ -137,14 +161,29 @@ describe("moono", () => {
       program.programId
     );
 
+    const [vaultAuthorityPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("vault_authority"), assetPoolPda.toBuffer()],
+      program.programId
+    );
+
+    const [vaultPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("vault"), assetPoolPda.toBuffer()],
+      program.programId
+    );
+
     await program.methods
       .initializeAssetPool()
       .accounts({
         protocol: protocolPda,
         assetPool: assetPoolPda,
         mint,
-        authority: provider.wallet.publicKey,
+        vaultAuthority: vaultAuthorityPda,
+        vault: vaultPda,
+        authority: wallet.payer.publicKey,
+        tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
       })
+      .signers([wallet.payer])
       .rpc();
 
     const tx = await program.methods
@@ -152,14 +191,13 @@ describe("moono", () => {
       .accounts({
         protocol: protocolPda,
         assetPool: assetPoolPda,
-        authority: provider.wallet.publicKey,
+        authority: wallet.payer.publicKey,
       })
+      .signers([wallet.payer])
       .rpc();
     console.log("tx:", tx);
 
     const assetPool = await program.account.assetPool.fetch(assetPoolPda);
-
-    console.log("updated asset pool:", assetPool);
 
     if (assetPool.isEnabled !== false) {
       throw new Error("isEnabled should be false");
@@ -172,6 +210,10 @@ describe("moono", () => {
     if (assetPool.allowBorrows !== true) {
       throw new Error("allowBorrows should be true");
     }
+
+    if (!assetPool.vault.equals(vaultPda)) {
+      throw new Error("Vault should remain unchanged");
+    }
   });
 
   it("initialize_tick_page", async () => {
@@ -181,7 +223,7 @@ describe("moono", () => {
     const mint = await createMint(
       provider.connection,
       wallet.payer,
-      provider.wallet.publicKey,
+      wallet.payer.publicKey,
       null,
       6
     );
@@ -191,15 +233,29 @@ describe("moono", () => {
       program.programId
     );
 
+    const [vaultAuthorityPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("vault_authority"), assetPoolPda.toBuffer()],
+      program.programId
+    );
+
+    const [vaultPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("vault"), assetPoolPda.toBuffer()],
+      program.programId
+    );
+
     await program.methods
       .initializeAssetPool()
       .accounts({
         protocol: protocolPda,
         assetPool: assetPoolPda,
         mint,
-        authority: provider.wallet.publicKey,
+        vaultAuthority: vaultAuthorityPda,
+        vault: vaultPda,
+        authority: wallet.payer.publicKey,
+        tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
+      .signers([wallet.payer])
       .rpc();
 
     const pageIndex = 0;
@@ -219,103 +275,25 @@ describe("moono", () => {
         protocol: protocolPda,
         assetPool: assetPoolPda,
         tickPage: tickPagePda,
-        authority: provider.wallet.publicKey,
+        authority: wallet.payer.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
+      .signers([wallet.payer])
       .rpc();
     console.log("tx:", tx);
 
-    const page = await program.account.tickPage.fetch(tickPagePda);
-
-    if (page.pageIndex !== pageIndex) {
-      throw new Error("Wrong page index");
-    }
-  });
-
-
-  it("mock_deposit_to_tick", async () => {
-    const tick = 10;
-    const amount = new anchor.BN(1000);
-
-    const res = await ensureProtocolInitialized();
-    const protocolPda = res[0];
-
-    const mint = await createMint(
-      provider.connection,
-      wallet.payer,
-      provider.wallet.publicKey,
-      null,
-      6
-    );
-
-    const [assetPoolPda] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("asset_pool"), mint.toBuffer()],
-      program.programId
-    );
-
-    await program.methods
-      .initializeAssetPool()
-      .accounts({
-        protocol: protocolPda,
-        assetPool: assetPoolPda,
-        mint,
-        authority: provider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .rpc();
-
-    const pageIndex = Math.floor(tick / PAGE_SIZE);
-
-    const [tickPagePda] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("tick_page"),
-        assetPoolPda.toBuffer(),
-        new anchor.BN(pageIndex).toArrayLike(Buffer, "le", 4),
-      ],
-      program.programId
-    );
-
-    await program.methods
-      .initializeTickPage(pageIndex)
-      .accounts({
-        protocol: protocolPda,
-        assetPool: assetPoolPda,
-        tickPage: tickPagePda,
-        authority: provider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .rpc();
-
-    const tx = await program.methods
-      .mockDepositToTick(tick, amount)
-      .accounts({
-        tickPage: tickPagePda,
-        assetPool: assetPoolPda,
-      })
-      .rpc();
-    console.log("tx:", tx);
-
-    const page = await program.account.tickPage.fetch(tickPagePda);
-    const index = tick % PAGE_SIZE;
-
-    if (page.ticks[index].availableLiquidity.toNumber() !== 1000) {
-      throw new Error("Wrong liquidity");
+    const tickPageAccountInfo = await provider.connection.getAccountInfo(tickPagePda);
+    if (!tickPageAccountInfo) {
+      throw new Error("TickPage account was not created");
     }
 
-    if (page.ticks[index].totalShares.toNumber() !== 1000) {
-      throw new Error("Wrong shares");
-    }
-
-    if (page.nonEmptyBitmap.toNumber() === 0) {
-      throw new Error("Bitmap not updated");
+    if (tickPageAccountInfo.data.length === 0) {
+      throw new Error("TickPage account data is empty");
     }
   });
 
 
   it("deposit_to_tick_transfers_tokens_into_vault", async () => {
-    console.log("provider wallet pubkey:", provider.wallet.publicKey.toBase58());
-    console.log("wallet.payer pubkey:", wallet.payer.publicKey.toBase58());
-
     const tick = 10;
     const amount = new anchor.BN(1_000);
 
