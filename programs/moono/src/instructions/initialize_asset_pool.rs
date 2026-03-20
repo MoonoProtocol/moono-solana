@@ -10,10 +10,8 @@ pub fn handle_initialize_asset_pool(ctx: Context<InitializeAssetPool>) -> Result
     let asset_pool = &mut ctx.accounts.asset_pool;
     let protocol = &ctx.accounts.protocol;
 
-    require!(
-        protocol.authority == ctx.accounts.authority.key(),
-        MoonoError::Unauthorized
-    );
+    require!(protocol.authority == ctx.accounts.authority.key(), MoonoError::Unauthorized);
+    require!(!protocol.paused, MoonoError::ProtocolPaused);
 
     asset_pool.version = 1;
     asset_pool.bump = ctx.bumps.asset_pool;

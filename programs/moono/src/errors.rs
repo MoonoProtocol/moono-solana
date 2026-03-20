@@ -40,4 +40,7 @@ pub enum MoonoError {
 
     #[msg("Wrong tick page")]
     WrongTickPage,
+
+    #[msg("Protocol is paused")]
+    ProtocolPaused,
 }

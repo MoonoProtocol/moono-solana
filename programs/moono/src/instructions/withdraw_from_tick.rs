@@ -4,7 +4,7 @@ use anchor_spl::token_interface::{
 };
 
 use crate::errors::MoonoError;
-use crate::state::{AssetPool, LpPosition, TickPage};
+use crate::state::{ProtocolConfig, AssetPool, LpPosition, TickPage};
 use crate::utils::{clear_bit, tick_to_page_index};
 
 pub fn handle_withdraw_from_tick(
@@ -14,16 +14,12 @@ pub fn handle_withdraw_from_tick(
 ) -> Result<()> {
     require!(shares_to_burn > 0, MoonoError::InvalidAmount);
 
+    let protocol = &ctx.accounts.protocol;
     let asset_pool = &ctx.accounts.asset_pool;
 
-    require!(
-        ctx.accounts.user_token_account.mint == asset_pool.mint,
-        MoonoError::WrongMint
-    );
-    require!(
-        ctx.accounts.vault.key() == asset_pool.vault,
-        MoonoError::WrongVault
-    );
+    require!(ctx.accounts.user_token_account.mint == asset_pool.mint, MoonoError::WrongMint);
+    require!(ctx.accounts.vault.key() == asset_pool.vault, MoonoError::WrongVault);
+    require!(!protocol.paused, MoonoError::ProtocolPaused);
 
     let mut tick_page = ctx.accounts.tick_page.load_mut()?;
     let (page, index) = tick_to_page_index(tick);
@@ -116,6 +112,12 @@ pub fn handle_withdraw_from_tick(
 #[derive(Accounts)]
 #[instruction(tick: u32)]
 pub struct WithdrawFromTick<'info> {
+    #[account(
+        seeds = [b"protocol"],
+        bump = protocol.bump
+    )]
+    pub protocol: Account<'info, ProtocolConfig>,
+
     #[account(
         mut,
         seeds = [b"asset_pool", asset_pool.mint.as_ref()],

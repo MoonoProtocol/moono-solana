@@ -390,6 +390,7 @@ describe("moono", () => {
     const tx = await program.methods
       .depositToTick(tick, amount)
       .accounts({
+        protocol: protocolPda,
         assetPool: assetPoolPda,
         owner: provider.wallet.publicKey,
         mint,
@@ -514,6 +515,7 @@ describe("moono", () => {
       await program.methods
         .depositToTick(tick, amount)
         .accounts({
+          protocol: protocolPda,
           assetPool: assetPoolPda,
           owner: provider.wallet.publicKey,
           mint,
@@ -639,6 +641,7 @@ describe("moono", () => {
     await program.methods
       .depositToTick(tick, depositAmount)
       .accounts({
+        protocol: protocolPda,
         assetPool: assetPoolPda,
         owner: wallet.payer.publicKey,
         mint,
@@ -659,6 +662,7 @@ describe("moono", () => {
     const tx = await program.methods
       .withdrawFromTick(tick, burnShares)
       .accounts({
+        protocol: protocolPda,
         assetPool: assetPoolPda,
         owner: wallet.payer.publicKey,
         mint,
@@ -730,5 +734,89 @@ describe("moono", () => {
     if (protocol.paused !== false) {
       throw new Error("Protocol should be unpaused");
     }
+  });
+
+  it("deposit_to_tick_fails_when_protocol_is_paused", async () => {
+    const res = await ensureProtocolInitialized();
+    const protocolPda = res[0];
+
+    const tx = await program.methods
+      .setProtocolPaused(true)
+      .accounts({
+        protocol: protocolPda,
+        authority: wallet.payer.publicKey,
+      })
+      .signers([wallet.payer])
+      .rpc();
+    console.log("tx:", tx);
+
+    const mint = await createMint(
+      provider.connection,
+      wallet.payer,
+      wallet.payer.publicKey,
+      null,
+      6
+    );
+
+    const userAta = await getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      wallet.payer,
+      mint,
+      wallet.payer.publicKey
+    );
+
+    await mintTo(
+      provider.connection,
+      wallet.payer,
+      mint,
+      userAta.address,
+      wallet.payer.publicKey,
+      10_000
+    );
+
+    const [assetPoolPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("asset_pool"), mint.toBuffer()],
+      program.programId
+    );
+
+    const [vaultAuthorityPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("vault_authority"), assetPoolPda.toBuffer()],
+      program.programId
+    );
+
+    const [vaultPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("vault"), assetPoolPda.toBuffer()],
+      program.programId
+    );
+
+    try {
+      await program.methods
+        .initializeAssetPool()
+        .accounts({
+          protocol: protocolPda,
+          assetPool: assetPoolPda,
+          mint,
+          vaultAuthority: vaultAuthorityPda,
+          vault: vaultPda,
+          authority: wallet.payer.publicKey,
+          tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([wallet.payer])
+        .rpc();
+
+      throw new Error("Expected initializeAssetPool to fail while paused");
+    } catch (_e) {
+      // expected
+    }
+
+    await program.methods
+      .setProtocolPaused(false)
+      .accounts({
+        protocol: protocolPda,
+        authority: wallet.payer.publicKey,
+      })
+      .signers([wallet.payer])
+      .rpc();
   });
 });

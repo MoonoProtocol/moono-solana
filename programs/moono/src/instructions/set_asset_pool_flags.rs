@@ -12,10 +12,8 @@ pub fn handle_set_asset_pool_flags(
     let protocol = &ctx.accounts.protocol;
     let asset_pool = &mut ctx.accounts.asset_pool;
 
-    require!(
-        protocol.authority == ctx.accounts.authority.key(),
-        MoonoError::Unauthorized
-    );
+    require!(protocol.authority == ctx.accounts.authority.key(), MoonoError::Unauthorized);
+    require!(!protocol.paused, MoonoError::ProtocolPaused);
 
     asset_pool.is_enabled = is_enabled;
     asset_pool.allow_deposits = allow_deposits;

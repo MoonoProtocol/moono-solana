@@ -15,5 +15,6 @@ export ANCHOR_WALLET=$PWD/keys/deployer.json
 ./scripts/test.sh deposit_to_tick_transfers_tokens_into_vault
 ./scripts/test.sh withdraw_from_tick_transfers_tokens_back_to_user
 ./scripts/test.sh deposit_to_tick_rejects_wrong_tick_page
+./scripts/test.sh deposit_to_tick_fails_when_protocol_is_paused
 
 ```

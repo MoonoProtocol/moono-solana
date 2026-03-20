@@ -11,10 +11,8 @@ pub fn handle_initialize_tick_page(
     let protocol = &mut ctx.accounts.protocol;
     let tick_page = &mut ctx.accounts.tick_page.load_init()?;
 
-    require!(
-        protocol.authority == ctx.accounts.authority.key(),
-        MoonoError::Unauthorized
-    );
+    require!(protocol.authority == ctx.accounts.authority.key(), MoonoError::Unauthorized);
+    require!(!protocol.paused, MoonoError::ProtocolPaused);
 
     tick_page.bump = ctx.bumps.tick_page;
     tick_page.asset_pool = ctx.accounts.asset_pool.key();

@@ -9,10 +9,7 @@ pub fn handle_set_protocol_paused(
 ) -> Result<()> {
     let protocol = &mut ctx.accounts.protocol;
 
-    require!(
-        protocol.authority == ctx.accounts.authority.key(),
-        MoonoError::Unauthorized
-    );
+    require!(protocol.authority == ctx.accounts.authority.key(), MoonoError::Unauthorized);
 
     protocol.paused = paused;
 

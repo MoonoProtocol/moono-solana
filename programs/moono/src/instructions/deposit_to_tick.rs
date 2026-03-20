@@ -4,7 +4,7 @@ use anchor_spl::token_interface::{
 };
 
 use crate::errors::MoonoError;
-use crate::state::{AssetPool, LpPosition, TickPage};
+use crate::state::{ProtocolConfig, AssetPool, LpPosition, TickPage};
 use crate::utils::{set_bit, tick_to_page_index};
 
 pub fn handle_deposit_to_tick(
@@ -14,17 +14,13 @@ pub fn handle_deposit_to_tick(
 ) -> Result<()> {
     require!(amount > 0, MoonoError::InvalidAmount);
 
+    let protocol = &ctx.accounts.protocol;
     let asset_pool = &ctx.accounts.asset_pool;
     require!(asset_pool.is_enabled, MoonoError::AssetPoolDisabled);
     require!(asset_pool.allow_deposits, MoonoError::DepositsDisabled);
-    require!(
-        ctx.accounts.user_token_account.mint == asset_pool.mint,
-        MoonoError::WrongMint
-    );
-    require!(
-        ctx.accounts.vault.key() == asset_pool.vault,
-        MoonoError::WrongVault
-    );
+    require!(ctx.accounts.user_token_account.mint == asset_pool.mint, MoonoError::WrongMint);
+    require!(ctx.accounts.vault.key() == asset_pool.vault, MoonoError::WrongVault);
+    require!(!protocol.paused, MoonoError::ProtocolPaused);
 
     let transfer_accounts = TransferChecked {
         from: ctx.accounts.user_token_account.to_account_info(),
@@ -105,6 +101,12 @@ pub fn handle_deposit_to_tick(
 #[derive(Accounts)]
 #[instruction(tick: u32)]
 pub struct DepositToTick<'info> {
+    #[account(
+        seeds = [b"protocol"],
+        bump = protocol.bump
+    )]
+    pub protocol: Account<'info, ProtocolConfig>,
+
     #[account(
         mut,
         seeds = [b"asset_pool", asset_pool.mint.as_ref()],
