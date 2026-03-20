@@ -696,4 +696,39 @@ describe("moono", () => {
     }
   });
 
+  it("set_protocol_paused", async () => {
+    const res = await ensureProtocolInitialized();
+    const protocolPda = res[0];
+
+    await program.methods
+      .setProtocolPaused(true)
+      .accounts({
+        protocol: protocolPda,
+        authority: wallet.payer.publicKey,
+      })
+      .signers([wallet.payer])
+      .rpc();
+
+    let protocol = await program.account.protocolConfig.fetch(protocolPda);
+
+    if (protocol.paused !== true) {
+      throw new Error("Protocol should be paused");
+    }
+
+    const tx = await program.methods
+      .setProtocolPaused(false)
+      .accounts({
+        protocol: protocolPda,
+        authority: wallet.payer.publicKey,
+      })
+      .signers([wallet.payer])
+      .rpc();
+    console.log("tx:", tx);
+
+    protocol = await program.account.protocolConfig.fetch(protocolPda);
+
+    if (protocol.paused !== false) {
+      throw new Error("Protocol should be unpaused");
+    }
+  });
 });

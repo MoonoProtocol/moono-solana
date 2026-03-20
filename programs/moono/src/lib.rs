@@ -66,4 +66,11 @@ pub mod moono {
             shares_to_burn,
         )
     }
+
+    pub fn set_protocol_paused(
+        ctx: Context<SetProtocolPaused>,
+        paused: bool,
+    ) -> Result<()> {
+        instructions::set_protocol_paused::handle_set_protocol_paused(ctx, paused)
+    }
 }
